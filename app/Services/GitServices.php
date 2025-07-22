@@ -60,44 +60,45 @@ readonly class GitServices
 
             foreach ($items as $repository) {
 
-                $commits = $this->gitManager->getCommits($repository, 1);
+                $branches = $this->gitManager->getBranches($repository);
 
-                foreach ($commits as $commit) {
-                    $userId = User::query()
-                        ->where('email', $commit->committer_email)
-                        ->orWhere('email2', $commit->committer_email)
-                        ->orWhere('email3', $commit->committer_email)
-                        ->value('id');
+                foreach ($branches as $branch) {
+                    $commits = $this->gitManager->getCommits($repository, $branch, 1);
+                    foreach ($commits as $commit) {
+                        $userId = User::query()
+                            ->where('email', $commit->committer_email)
+                            ->orWhere('email2', $commit->committer_email)
+                            ->orWhere('email3', $commit->committer_email)
+                            ->value('id');
 
-                    if ($userId === null) {
+                        if ($userId === null) {
 
-                        if (!isset($loggedUsers[$commit->committer_email])) {
-                            file_put_contents('email.txt', $commit->committer_name . '   ' . $commit->committer_email . PHP_EOL, FILE_APPEND);
-                            $loggedUsers[$commit->committer_email] = true;
+//                            if (!isset($loggedUsers[$commit->committer_email])) {
+//                                file_put_contents('email.txt', $commit->committer_name . '   ' . $commit->committer_email . PHP_EOL, FILE_APPEND);
+//                                $loggedUsers[$commit->committer_email] = true;
+//                            }
+
+                            continue;
                         }
 
-                        continue;
-
-//                        $userId = User::query()->create([
-//                            'name' => $commit->committer_name,
-//                            'email' => $commit->committer_email
-//                        ])->id;
-                    }
-
-                    try {
-                        Commit::query()->updateOrCreate([
-                            'hash' => $commit->key
-                        ], [
-                                'message' => $commit->message,
-                                'commit_at' => Carbon::createFromTimeString($commit->committed_at),
-                                'repository_id' => $repository->id,
-                                'author_user_id' => $userId
-                            ]
-                        );
-                    } catch (\Throwable $e) {
-                        echo $e->getMessage() . PHP_EOL;
+                        try {
+                            Commit::query()->updateOrCreate([
+                                'hash' => $commit->key
+                            ], [
+                                    'branch' => $commit->branch,
+                                    'message' => $commit->message,
+                                    'commit_at' => Carbon::createFromTimeString($commit->committed_at),
+                                    'repository_id' => $repository->id,
+                                    'author_user_id' => $userId
+                                ]
+                            );
+                        } catch (\Throwable $e) {
+                            echo $e->getMessage() . PHP_EOL;
+                        }
                     }
                 }
+
+
             }
 
         });

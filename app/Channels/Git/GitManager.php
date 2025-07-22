@@ -3,6 +3,7 @@
 namespace App\Channels\Git;
 
 
+use App\Channels\Git\Models\Branch;
 use Illuminate\Support\Collection;
 
 class GitManager implements IGit
@@ -34,8 +35,13 @@ class GitManager implements IGit
         return $this->driver->getRepositories();
     }
 
-    public function getCommits($repository, int|null $agoDays = null): array|Collection
+    public function getBranches($branch): array|Collection
     {
-        return $this->driver->getCommits($repository, $agoDays);
+        return $this->driver->getBranches($branch);
+    }
+
+    public function getCommits($repository, Branch $branch, int|null $agoDays = null): array|Collection
+    {
+        return $this->driver->getCommits($repository, $branch, $agoDays);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Channels\Git\Drivers;
 
 
 use App\Channels\Git\IGit;
+use App\Channels\Git\Models\Branch;
 use App\Channels\Git\Models\Commit;
 use App\Channels\Git\Models\Repository;
 use App\Channels\Git\Models\User;
@@ -79,8 +80,33 @@ class Gitlab implements IGit
         return $repositories;
     }
 
+    public function getBranches($repository): array|Collection
+    {
+        $page = 1;
+        $perPage = 100;
 
-    public function getCommits($repository, int|null $agoDays = null): array|Collection
+        $branches = collect();
+        do {
+            $path = "/projects/{$repository->key}/repository/branches?per_page={$perPage}&page={$page}";
+
+            $branchesData = $this->httpGet($path);
+
+            foreach ($branchesData as $_branchData) {
+                $branch = new Branch(
+                    name: $_branchData['name'],
+                    merged: $_branchData['merged'],
+                    protected: $_branchData['protected'],
+                );
+                $branches->push($branch);
+            }
+            $page++;
+
+        } while (count($branchesData) === $perPage);
+
+        return $branches;
+    }
+
+    public function getCommits($repository, Branch $branch, int|null $agoDays = null): array|Collection
     {
         $commits = collect();
         $page = 1;
@@ -96,6 +122,7 @@ class Gitlab implements IGit
             $query = [
                 'per_page' => $perPage,
                 'page' => $page,
+                'ref_name' => $branch->name
             ];
 
             if ($since !== null) {
@@ -115,6 +142,7 @@ class Gitlab implements IGit
 
                     $commit->key = $commitData['id'];
                     $commit->message = $commitData['message'];
+                    $commit->branch = $branch->name;
                     $commit->committer_name = $commitData['author_name'];
                     $commit->committer_email = $commitData['author_email'];
                     $commit->committed_at = $commitData['committed_date'];
